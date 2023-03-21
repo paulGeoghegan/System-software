@@ -1,7 +1,7 @@
 /*
  *
  * At 11:30 pm , there will be a check for the xml files that have been uploaded or 
- * files that have not been upladed
+ * files that have not been uploaded
  *
  * At 1:00 am, the xml reports will be backed up from xml_upload_directory to 
  * dashboard_directory
@@ -35,20 +35,18 @@ int main()
     backup_time.tm_hour = 1; 
     backup_time.tm_min = 0; 
     backup_time.tm_sec = 0;
-
-    // Implementation for Singleton Pattern if desired (Only one instance running)
+   printf("Starting Daemon");
 
     // Create a child process      
     int pid = fork();
  
     if (pid > 0) {
         // if PID > 0 :: this is the parent
-        // this process performs printf and finishes
-        //sleep(10);  // uncomment to wait 10 seconds before process ends
+        sleep(10);
         exit(EXIT_SUCCESS);
     } else if (pid == 0) {
        // Step 1: Create the orphan process
-       
+
        // Step 2: Elevate the orphan process to session leader, to loose controlling TTY
        // This command runs the process in a new session
        if (setsid() < 0) { exit(EXIT_FAILURE); }
@@ -78,8 +76,8 @@ int main()
           // Signal Handler goes here
 
           // Log file goes here
-          // TODO create your logging functionality here to a file
-
+         openlog ("system-software-assignment1", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
+         syslog (LOG_NOTICE,"Demon started by User %d",getuid());
 
           // Orphan Logic goes here!! 
           // Keep process running with infinite loop
@@ -92,7 +90,7 @@ int main()
 	  check_uploads_time.tm_hour = 23; 
 	  check_uploads_time.tm_min = 30; 
 	  check_uploads_time.tm_sec = 0;
-	
+
   	  while(1) {
 	  	sleep(1);
 
@@ -100,35 +98,33 @@ int main()
 			syslog(LOG_ERR, "ERROR: daemon.c : SIG_ERR RECEIVED");
 		} 
 
-		
+
 		//countdown to 23:30
 	  	time(&now);
 		double seconds_to_files_check = difftime(now,mktime(&check_uploads_time));
-		//syslog(LOG_INFO, "%.f seconds until check for xml uploads", seconds_to_files_check);
+		syslog(LOG_INFO, "%.f seconds until check for xml uploads", seconds_to_files_check);
 		if(seconds_to_files_check == 0) {
 			check_file_uploads();
 
 			//change to tommorow's day
 			update_timer(&check_uploads_time);
 		}
-				
 
 		//countdown to 1:00
 		time(&now);
 		double seconds_to_transfer = difftime(now, mktime(&backup_time));
-		//syslog(LOG_INFO, "%.f seconds until backup", seconds_to_files_check);
+		syslog(LOG_INFO, "%.f seconds until backup", seconds_to_files_check);
 		if(seconds_to_transfer == 0) {
 			lock_directories();
 			collect_reports();	  
 			backup_dashboard();
 			sleep(30);
 			unlock_directories();
-			generate_reports();
 			//after actions are finished, start counting to next day
-			update_timer(&backup_time);
-		}	
+         update_timer(&backup_time);
+		}
 	  }
-	}	
+	}
 	closelog();
        return 0;
     }
