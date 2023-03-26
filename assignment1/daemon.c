@@ -42,7 +42,7 @@ int main()
  
     if (pid > 0) {
         // if PID > 0 :: this is the parent
-        sleep(10);
+        sleep(3);
         exit(EXIT_SUCCESS);
     } else if (pid == 0) {
        // Step 1: Create the orphan process
@@ -77,7 +77,7 @@ int main()
 
           // Log file goes here
          openlog ("system-software-assignment1", LOG_CONS | LOG_PID | LOG_NDELAY, LOG_LOCAL1);
-         syslog (LOG_NOTICE,"Demon started by User %d",getuid());
+         syslog ( LOG_NOTICE,"Demon started by User %d",getuid());
 
           // Orphan Logic goes here!! 
           // Keep process running with infinite loop
