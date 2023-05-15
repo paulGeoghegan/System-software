@@ -6,21 +6,16 @@ Paul Geoghegan
 */
 
 #include <arpa/inet.h>
-#include <semaphore.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
-#include <pthread.h>
+#include <sys/types.h>
 #include <unistd.h>
 
-//Global variables
-sem_t x,y;
-pthread_t fileReaderThreads[4];
-int currentFileReaderThreads=0;
+#define maxClients 20
 
-//Function Declarations
-void* fileReader(void*);
+void fileSaver(int);
 
 int main() {
 	printf("Starting Server!\n");
@@ -29,11 +24,7 @@ int main() {
 	struct sockaddr_in serverAddr, clientAddr;
 	struct sockaddr_storage serverStorage;
 	socklen_t addrSize;
-	sem_init(&x,0,1);
-	sem_init(&y,0,1);
-pthread_t threadId[4];
-	int i = 0;
-	char serverMessage[100],clientMessage[100];
+	pid_t pid;
 
 	//Sets up server socket
 	serverSocket = socket(AF_INET, SOCK_STREAM, 0);
@@ -57,7 +48,7 @@ pthread_t threadId[4];
 	printf("The socket has been successfully bound\n");
 
 	//Listen for a max of 4connections
-	if(listen(serverSocket,4)<0) {
+	if(listen(serverSocket,maxClients)<0) {
 		printf("Sorry couldn't listen for client connections\n");
 		return -1;
 	}
@@ -74,22 +65,19 @@ pthread_t threadId[4];
 			return -1;
 		}
 		else {
-			//Gets client message
-			if(recv(clientSocket,&clientMessage,sizeof(clientMessage),0)<0) {
-				printf("Error receiving data from client\n");
-				strcpy(serverMessage,"failed");
+			//Creates child process
+			pid = fork();
+			if(pid==0) {
+				fileSaver(clientSocket);
+				//Closes client
+				close(clientSocket);
+				//Makes process exit
+				exit(0);
 			}
-			else {
-				printf("Client data: %s\n",clientMessage);
-				strcpy(serverMessage,"success");
+			else if(pid<0) {
+				printf("Couldn't create process");
+				break;
 			}
-
-			//Sends server message
-			if(send(clientSocket,serverMessage,strlen(serverMessage),0)<0) {
-				printf("Failed to respond to client\n");
-				return -1;
-			}
-			printf("Reported %s to socket",serverMessage);
 		}
 	}
 
@@ -100,23 +88,27 @@ pthread_t threadId[4];
 	return 0;
 }
 
-void* fileReader(void*) {
-	//Locks semaphore to increase count
-	sem_wait(&x);
-	currentFileReaderThreads++;
-	if(currentFileReaderThreads==1) {
-		sem_wait(&y);
+
+void fileSaver(int clientSocket) {
+
+	char serverMessage[100],clientMessage[100];
+
+	//Gets client message
+	if(recv(clientSocket,&clientMessage,sizeof(clientMessage),0)<0) {
+		printf("Error receiving data from client\n");
+		strcpy(serverMessage,"failed: couldn't read data");
 	}
-	sem_post(&x);
-	printf("There are %d threads reading",currentFileReaderThreads);
-	sleep(5);
-	//Locks semaphore to decrease count
-	sem_wait(&x);
-	currentFileReaderThreads--;
-	if(currentFileReaderThreads==0) {
-		sem_post(&y);
+	else {
+		printf("Client data: %s\n",clientMessage);
+		strcpy(serverMessage,"success: data was received");
 	}
-	sem_post(&x);
-	printf("%d threads finishing",currentFileReaderThreads+1);
-	pthread_exit(NULL);
+
+	//Sends server message
+	if(send(clientSocket,serverMessage,strlen(serverMessage),0)<0) {
+		printf("Failed to report %s to socket\n",serverMessage);
+	}
+	else {
+		printf("Reported %s to socket\n",serverMessage);
+	}
+
 }
