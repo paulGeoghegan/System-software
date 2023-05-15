@@ -1,11 +1,12 @@
 CC=gcc
 CFLAGS=-I.
+DEPS=server.h
 ODIR=objects
 SRCDIR=src
-_OBJ=server.o
+_OBJ=server.o fileSaver.o
 OBJ=$(patsubst %,$(ODIR)/%,$(_OBJ))
 
-$(ODIR)/%.o: $(SRCDIR)/%.c
+$(ODIR)/%.o: $(SRCDIR)/%.c $(SRCDIR)/$(DEPS)
 	$(CC) -c -o $@ $< $(CFLAGS)
 
 reportServer: $(OBJ)

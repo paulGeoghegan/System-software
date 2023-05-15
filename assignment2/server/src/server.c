@@ -6,12 +6,7 @@ Paul Geoghegan
 */
 
 #include <arpa/inet.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/socket.h>
-#include <sys/types.h>
-#include <unistd.h>
+#include "server.h"
 
 #define maxClients 20
 
@@ -37,7 +32,7 @@ int main() {
 
 	//Sets socket details
 	serverAddr.sin_family = AF_INET;
-	serverAddr.sin_port = htons(2000);
+	serverAddr.sin_port = htons(2001);
 	serverAddr.sin_addr.s_addr = inet_addr("127.0.0.1");
 
 	//Tries to bind to port
@@ -88,27 +83,3 @@ int main() {
 	return 0;
 }
 
-
-void fileSaver(int clientSocket) {
-
-	char serverMessage[100],clientMessage[100];
-
-	//Gets client message
-	if(recv(clientSocket,&clientMessage,sizeof(clientMessage),0)<0) {
-		printf("Error receiving data from client\n");
-		strcpy(serverMessage,"failed: couldn't read data");
-	}
-	else {
-		printf("Client data: %s\n",clientMessage);
-		strcpy(serverMessage,"success: data was received");
-	}
-
-	//Sends server message
-	if(send(clientSocket,serverMessage,strlen(serverMessage),0)<0) {
-		printf("Failed to report %s to socket\n",serverMessage);
-	}
-	else {
-		printf("Reported %s to socket\n",serverMessage);
-	}
-
-}
